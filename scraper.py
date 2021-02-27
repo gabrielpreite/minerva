@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+from datetime import datetime
 from getpass import getpass
 from requests_html import HTMLSession
 from bs4 import BeautifulSoup
@@ -15,6 +17,12 @@ def init():
 		CONFIG = yaml.load(f, Loader=yaml.FullLoader)
 	global s
 	s = HTMLSession()
+	global LOG
+	LOG = "log.out"
+	logging.basicConfig(filename=LOG, level=logging.DEBUG)
+	global file_s, file_c
+	file_s = 0
+	file_c = 0
 
 def login():
 	#reads login info from json
@@ -91,24 +99,32 @@ def getres(link):
 
 	#finds all matches for the resource link type
 	res_list = soup.find_all("a", {"class": "aalink", "href": re.compile("(.+)resource(.+)")})
-	kb = 0 #records size in kb
 	for res in res_list:
 		res_page = s.get(res.get("href"))
 		res_url = res_page.url
-		print(res_url)
+		logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S\n")+res_url)
 
 		#saves size in http header
 		res = s.head(res_url)
-		kb += int(res.headers["Content-Length"])/1024
-	return kb
+		global file_s, file_c
+		file_s += int(res.headers["Content-Length"])/1024
+		file_c += 1
 
 def enroll(data):
-	res_w = 0
+	counter = 0
+	global file_s, file_c
 	for item in data:
+		counter += 1
 		try:
 			#scrape page
 			page = s.get(item["link"])
 			soup = BeautifulSoup(page.content, "html.parser")
+			if re.search("(.+)Opzioni di iscrizione(.+)", str(soup)) == None:
+				getres(item["link"])
+				global file_s, file_c
+				print("Logged "+str(file_s)+"kb in "+str(file_c)+" files")
+				print("Scanned "+str(counter)+"/"+str(len(data))+" courses")
+				continue
 
 			#scrape fields from js generated code
 			r_id = soup.find("input", {"name": "id"}).get("value")
@@ -131,19 +147,25 @@ def enroll(data):
 			s.post(CONFIG["url_enroll"], data=payload)
 			p = s.get(item["link"])
 			soup = BeautifulSoup(p.content, "html.parser")
+			#todo - improve enrollment response detection
 			if re.search("(.+)Opzioni di iscrizione(.+)", str(soup)) == None:
-				print("Enrolled in: "+item["name"])
+				#print("Enrolled in: "+item["name"])
+				logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nEnrolled in: "+item["name"])
 			else:
-				print("Closed course: "+item["name"])
+				#print("Closed course: "+item["name"])
+				logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nClosed course: "+item["name"])
 		except:
 			#courses already enrolled in have no "enroll" button
-			print("Already enrolled in: "+item["name"])
-		res_w += getres(item["link"])
-		print(res_w)
+			#print("Already enrolled in: "+item["name"])
+			logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nAlready enrolled in: "+item["name"])
+		getres(item["link"])
+		print("Logged "+str(file_s)+"kb in "+str(file_c)+" files")
+		print("Scanned "+str(counter)+"/"+str(len(data))+" courses")
 
 def main():
 	init()
 	login()
+
 	#cli argument logic
 	if len(sys.argv) > 1 and str(sys.argv[1]) == "-u":
 		data = [{"name": getname(str(sys.argv[2])),
@@ -151,6 +173,7 @@ def main():
 		}]
 	else:
 		data = getlist()
+
 	enroll(data)
 
 if __name__ == "__main__":
