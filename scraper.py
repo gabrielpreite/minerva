@@ -9,6 +9,7 @@ import json
 import re
 import yaml
 import sys
+import traceback
 
 def init():
 	#load config from yaml file
@@ -68,17 +69,17 @@ def getlist():
 
 	#if json doesn't exist, generate it from html source
 	except FileNotFoundError:
-		with open("20-21/list.html", "r") as f:
+		with open("20-21/all.html", "r") as f:
 			soup = BeautifulSoup(f.read(), "html.parser")
 		courses = []
-		try:
-			list = soup.find_all("a", class_="aalink")
-			for item in list:
+		list = soup.find_all("a", class_="aalink")
+		for item in list:
+			try:
 				name = re.search(">(.+)<", str(item)).group()[1:-1]
 				link = re.split("\"", str(item))[3]
 				courses.append({"name": name, "link": link})
-		except:
-			pass
+			except:
+				traceback.print_exc()
 		with open("20-21/courses20-21.json", "w") as f:
 			f.write(json.dumps(courses))
 
@@ -122,8 +123,8 @@ def enroll(data):
 			if re.search("(.+)Opzioni di iscrizione(.+)", str(soup)) == None:
 				getres(item["link"])
 				global file_s, file_c
-				print("Logged "+str(file_s)+"kb in "+str(file_c)+" files")
-				print("Scanned "+str(counter)+"/"+str(len(data))+" courses")
+				logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nLogged "+str(file_s)+"kb in "+str(file_c)+" files")
+				logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nScanned "+str(counter)+"/"+str(len(data))+" courses")
 				continue
 
 			#scrape fields from js generated code
@@ -150,17 +151,20 @@ def enroll(data):
 			#todo - improve enrollment response detection
 			if re.search("(.+)Opzioni di iscrizione(.+)", str(soup)) == None:
 				#print("Enrolled in: "+item["name"])
-				logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nEnrolled in: "+item["name"])
+				#logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nEnrolled in: "+item["name"])
+				pass
 			else:
 				#print("Closed course: "+item["name"])
-				logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nClosed course: "+item["name"])
+				#logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nClosed course: "+item["name"])
+				pass
 		except:
 			#courses already enrolled in have no "enroll" button
 			#print("Already enrolled in: "+item["name"])
-			logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nAlready enrolled in: "+item["name"])
+			#logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nAlready enrolled in: "+item["name"])
+			pass
 		getres(item["link"])
-		print("Logged "+str(file_s)+"kb in "+str(file_c)+" files")
-		print("Scanned "+str(counter)+"/"+str(len(data))+" courses")
+		logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nLogged "+str(file_s)+"kb in "+str(file_c)+" files")
+		logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")+"\nScanned "+str(counter)+"/"+str(len(data))+" courses")
 
 def main():
 	init()
