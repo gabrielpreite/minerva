@@ -106,11 +106,12 @@ def getres(link):
 		logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S\n")+res_url)
 
 		#saves size in http header
+		blacklist = ["text/html"]
 		res = s.head(res_url)
-		print(res.headers)
-		global file_s, file_c
-		file_s += int(res.headers["Content-Length"])/1024
-		file_c += 1
+		if res.headers["Content-Type"] not in blacklist:
+			global file_s, file_c
+			file_s += int(res.headers["Content-Length"])/1024
+			file_c += 1
 
 def enroll(data):
 	counter = 0
