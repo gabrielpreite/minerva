@@ -22,8 +22,10 @@ def init():
 	LOG = "log.out"
 	logging.basicConfig(filename=LOG, level=logging.DEBUG)
 	global file_s, file_c
-	file_s = 0
-	file_c = 0
+	file_s = 0 #file size
+	file_c = 0 #file count
+	#global blacklist #blacklist of undownloadable resource types
+	#blacklist = []
 
 def login():
 	#reads login info from json
@@ -106,12 +108,16 @@ def getres(link):
 		logging.debug(datetime.now().strftime("%m/%d/%Y, %H:%M:%S\n")+res_url)
 
 		#saves size in http header
-		blacklist = ["text/html"]
 		res = s.head(res_url)
-		if res.headers["Content-Type"] not in blacklist:
+		try:
 			global file_s, file_c
-			file_s += int(res.headers["Content-Length"])/1024
+			#the next line might raise an exception
+			#if the resource type is not a file (html/css/js, etc)
+			size = int(res.headers["Content-Length"])/1024
+			file_s += size
 			file_c += 1
+		except:
+			pass
 
 def enroll(data):
 	counter = 0
